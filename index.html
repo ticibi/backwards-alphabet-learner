@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Learn Alphabet Backwards</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #1a1a1a, #2c2c2c);
+            color: #e0e0e0;
+            margin: 0;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            background: rgba(58, 58, 58, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 450px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        h1 {
+            margin: 0 0 20px;
+            font-size: 28px;
+            color: #3498db;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        #displayLetter {
+            font-size: 60px;
+            margin: 20px 0;
+            color: #3498db;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        input {
+            padding: 12px;
+            font-size: 18px;
+            width: 220px;
+            background: rgba(74, 74, 74, 0.8);
+            color: #e0e0e0;
+            border: none;
+            border-radius: 25px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        input:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+        }
+        .button-group {
+            margin: 15px 0;
+        }
+        button {
+            padding: 10px 25px;
+            font-size: 16px;
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: transform 0.2s ease;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        #feedback {
+            margin: 15px 0;
+            font-size: 18px;
+            min-height: 20px;
+            font-weight: 500;
+        }
+        #progress, #metrics, #hint {
+            margin: 15px 0;
+            font-size: 14px;
+            color: #bdc3c7;
+        }
+        #hint {
+            display: none;
+            font-style: italic;
+        }
+        #metrics {
+            white-space: pre-wrap;
+            text-align: left;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+        .balloon {
+            position: absolute;
+            width: 50px;
+            height: 70px;
+            background: radial-gradient(circle, rgba(255, 0, 0, 0.8), rgba(255, 0, 0, 0.4));
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            animation: float 4s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes float {
+            0% { transform: translateY(100vh); }
+            100% { transform: translateY(-100vh) rotate(360deg); }
+        }
+        .firework {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: hsl(0, 100%, 50%);
+            border-radius: 50%;
+            animation: explode 1s ease-out forwards;
+            pointer-events: none;
+        }
+        @keyframes explode {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(20); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1></h1>
+        <div id="displayLetter"></div>
+        <input type="text" id="userInput" placeholder="Start by typing Z" autofocus>
+        <div class="button-group">
+            <button onclick="toggleHint()">Hint</button>
+            <button onclick="startGame()">Restart</button>
+        </div>
+        <div id="feedback"></div>
+        <div id="progress"></div>
+        <div id="hint">ZYXWVUTSRQPONMLKJIHGFEDCBA</div>
+        <div id="metrics"></div>
+    </div>
+
+    <script>
+        const alphabet = 'ZYXWVUTSRQPONMLKJIHGFEDCBA';
+        let currentIndex = -1;
+        let correctString = '';
+        let failureStats = {};
+        let totalCompletions = 0;
+        let startTime = null;
+        let completionTimes = [];
+
+        function startGame() {
+            currentIndex = -1;
+            correctString = '';
+            startTime = Date.now();
+            displayCurrentLetter();
+            document.getElementById('userInput').value = '';
+            document.getElementById('feedback').textContent = '';
+            updateProgress();
+            updateMetrics();
+            document.getElementById('userInput').focus();
+            removeCelebrations();
+            document.getElementById('userInput').disabled = false;
+        }
+
+        function displayCurrentLetter() {
+            if (currentIndex === -1) {
+                document.getElementById('displayLetter').textContent = 'Start with Z';
+            } else {
+                document.getElementById('displayLetter').textContent = alphabet[currentIndex];
+            }
+        }
+
+        function updateProgress() {
+            document.getElementById('progress').textContent = 
+                `Progress: ${Math.max(currentIndex + 1, 0)}/${alphabet.length}`;
+        }
+
+        function updateMetrics() {
+            let metricsText = `Total Completions: ${totalCompletions}\n`;
+            if (completionTimes.length > 0) {
+                const avgTime = (completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length / 1000).toFixed(2);
+                metricsText += `Avg. Completion Time: ${avgTime}s\n`;
+            }
+            metricsText += 'Failure Stats:\n';
+            for (let letter in failureStats) {
+                metricsText += `${letter}: ${failureStats[letter]} times\n`;
+            }
+            document.getElementById('metrics').textContent = metricsText;
+        }
+
+        function checkAnswer(input) {
+            const feedback = document.getElementById('feedback');
+            let expectedLetter;
+
+            if (currentIndex === -1) {
+                expectedLetter = 'Z';
+            } else if (currentIndex === alphabet.length - 2) {
+                expectedLetter = 'A'; // When on 'B', expect 'A'
+            } else {
+                expectedLetter = alphabet[currentIndex + 1];
+            }
+            
+            if (input === expectedLetter) {
+                feedback.textContent = 'Correct! ✓';
+                feedback.style.color = '#2ecc71';
+                if (currentIndex >= 0) {
+                    correctString += alphabet[currentIndex];
+                }
+                currentIndex++;
+
+                if (input === 'A') {
+                    feedback.textContent = 'Congratulations! You did it!';
+                    correctString += 'A'; // Add 'A' to the correct string
+                    document.getElementById('userInput').disabled = true;
+                    totalCompletions++;
+                    const timeTaken = Date.now() - startTime;
+                    completionTimes.push(timeTaken);
+                    updateMetrics();
+                    celebrate();
+                    setTimeout(startGame, 3000); // Auto-reset after 3 seconds
+                } else {
+                    displayCurrentLetter();
+                }
+            } else {
+                feedback.textContent = currentIndex === -1 ? 
+                    'Start with Z!' : 
+                    `Failed! Before ${alphabet[currentIndex]} is ${expectedLetter}`;
+                feedback.style.color = '#e74c3c';
+                
+                if (currentIndex >= 0) {
+                    failureStats[alphabet[currentIndex]] = (failureStats[alphabet[currentIndex]] || 0) + 1;
+                }
+                updateMetrics();
+
+                setTimeout(() => {
+                    feedback.textContent = `Resetting... You got: ${correctString}`;
+                    startGame();
+                }, 1000);
+            }
+            
+            document.getElementById('userInput').value = '';
+            updateProgress();
+        }
+
+        function toggleHint() {
+            const hint = document.getElementById('hint');
+            hint.style.display = hint.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function celebrate() {
+            // Balloons
+            for (let i = 0; i < 20; i++) {
+                const balloon = document.createElement('div');
+                balloon.className = 'balloon';
+                balloon.style.left = `${Math.random() * 100}vw`;
+                balloon.style.background = `radial-gradient(circle, hsl(${Math.random() * 360}, 70%, 50%), hsl(${Math.random() * 360}, 70%, 30%))`;
+                balloon.style.animationDuration = `${3 + Math.random() * 2}s`;
+                document.body.appendChild(balloon);
+                setTimeout(() => balloon.remove(), 5000);
+            }
+
+            // Fireworks
+            for (let i = 0; i < 15; i++) {
+                const firework = document.createElement('div');
+                firework.className = 'firework';
+                firework.style.left = `${Math.random() * 100}vw`;
+                firework.style.top = `${Math.random() * 100}vh`;
+                firework.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                document.body.appendChild(firework);
+                setTimeout(() => firework.remove(), 1000);
+            }
+        }
+
+        function removeCelebrations() {
+            document.querySelectorAll('.balloon, .firework').forEach(el => el.remove());
+        }
+
+        // Real-time input processing
+        document.getElementById('userInput').addEventListener('input', function(e) {
+            const input = e.target.value.toUpperCase().trim();
+            if (input.length === 1) {
+                checkAnswer(input);
+            }
+        });
+
+        // Start the game initially
+        window.onload = function() {
+            startGame();
+            document.getElementById('userInput').focus();
+        };
+    </script>
+</body>
+</html>
